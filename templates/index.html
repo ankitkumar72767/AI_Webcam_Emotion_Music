@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🎵 AI Emotion Music Player 🎶</title>
+  <style>
+    /* 💅 All your style remains unchanged */
+    :root {
+      --bg-dark: #050505;
+      --text-dark: #ffffff;
+      --bg-light: #f5f5f5;
+      --text-light: #111111;
+      --primary: #00ffe7;
+      --secondary: #ff67c4;
+      --accent: #7cfff3;
+      --glow: #12fff1;
+      --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+    }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-dark);
+      text-align: center;
+      padding: 2rem;
+      transition: 0.4s ease-in-out;
+    }
+
+    body.light-mode {
+      background: var(--bg-light);
+      color: var(--text-light);
+    }
+
+    header {
+      font-size: 3rem;
+      font-weight: bold;
+      background: var(--gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 2.5rem;
+      letter-spacing: 1.2px;
+      text-shadow: 2px 2px 5px #00000055;
+    }
+
+    #video {
+      width: 95%;
+      max-width: 740px;
+      border: 6px solid var(--accent);
+      border-radius: 20px;
+      box-shadow: 0 0 40px var(--glow);
+      margin-bottom: 1.8rem;
+    }
+
+    .emoji {
+      font-size: 5rem;
+      margin: 1rem 0;
+      animation: bounce 3s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+
+    .btn-group {
+      margin-top: 2rem;
+    }
+
+    button {
+      padding: 14px 30px;
+      margin: 12px;
+      font-size: 1.2rem;
+      font-weight: bold;
+      border: none;
+      border-radius: 14px;
+      background: var(--gradient);
+      color: black;
+      cursor: pointer;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      transition: all 0.3s ease-in-out;
+    }
+
+    button:hover {
+      transform: scale(1.08);
+      box-shadow: 0 0 20px var(--accent);
+    }
+
+    input[type="range"] {
+      width: 65%;
+      margin: 1rem auto;
+      display: block;
+      accent-color: var(--secondary);
+    }
+
+    #emotion, #tip, #emotionHistory {
+      margin-top: 1rem;
+      font-size: 1.2rem;
+    }
+
+    #tip {
+      color: #ccc;
+      font-style: italic;
+    }
+
+    textarea {
+      width: 90%;
+      max-width: 600px;
+      padding: 1rem;
+      border-radius: 12px;
+      margin-top: 1.5rem;
+      resize: none;
+    }
+
+    #chatResponse {
+      margin-top: 1rem;
+      font-weight: bold;
+      color: #00ffe7;
+    }
+
+    #particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: -1;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        font-size: 2rem;
+      }
+      button {
+        font-size: 1rem;
+        padding: 10px 20px;
+      }
+      .emoji {
+        font-size: 3rem;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="particles"></canvas>
+  <header>🎧 AI Emotion Music Player</header>
+
+  <img id="video" src="/video_feed" alt="Webcam Stream" />
+  <div class="emoji" id="emoji">😊</div>
+
+  <div id="emotion"></div>
+  <div id="tip"></div>
+  <div id="emotionHistory"></div>
+
+  <div class="btn-group">
+    <button onclick="stopMusic()">⏹ Stop Music</button>
+    <button onclick="toggleTheme()">🌓 Toggle Mode</button>
+  </div>
+
+  <div>
+    <label for="volume">🔊 Volume:</label><br>
+    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5" onchange="setVolume(this.value)">
+  </div>
+
+  <h3>🤖 Talk to AI Assistant</h3>
+  <textarea id="userInput" rows="3" placeholder="Say something..."></textarea><br>
+  <button onclick="askBot()">Send</button>
+  <div id="chatResponse"></div>
+
+  <audio id="audio" loop></audio>
+
+  <script>
+    const audio = document.getElementById("audio");
+    const emojiDisplay = document.getElementById("emoji");
+    const emotionHistoryArr = [];
+
+    const emotionMap = {
+      happy: "😄", sad: "😢", angry: "😠",
+      neutral: "😐", surprise: "😮", fear: "😨", disgust: "🤢"
+    };
+
+    const musicMap = {
+      happy: "/static/music/happy.mp3",
+      sad: "/static/music/sad.mp3",
+      angry: "/static/music/angry.mp3",
+      neutral: "/static/music/neutral.mp3",
+      surprise: "/static/music/surprise.mp3",
+      fear: "/static/music/fear.mp3",
+      disgust: "/static/music/disgust.mp3"
+    };
+
+    let currentEmotion = "neutral";
+
+    function fetchEmotion() {
+      fetch("/emotion")
+        .then(res => res.json())
+        .then(data => {
+          const emotion = data.emotion || "neutral";
+          const tip = data.tip || "";
+          const emoji = emotionMap[emotion] || "🙂";
+
+          if (emotion !== currentEmotion) {
+            currentEmotion = emotion;
+            emojiDisplay.textContent = emoji;
+            audio.src = musicMap[emotion] || musicMap["neutral"];
+            audio.play();
+
+            emotionHistoryArr.unshift(`${emoji} ${emotion}`);
+            if (emotionHistoryArr.length > 5) emotionHistoryArr.pop();
+            document.getElementById("emotionHistory").innerHTML =
+              `<strong>🕒 Last Emotions:</strong> ` + emotionHistoryArr.join(" | ");
+          }
+
+          document.getElementById("emotion").innerHTML =
+            `🎭 <b>Emotion:</b> ${emotion.toUpperCase()} ${emoji}`;
+          document.getElementById("tip").innerHTML =
+            `💡 <i>${tip}</i>`;
+        });
+    }
+
+    function stopMusic() {
+      audio.pause();
+      audio.currentTime = 0;
+    }
+
+    function setVolume(val) {
+      audio.volume = val;
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("light-mode");
+    }
+
+    function askBot() {
+      const message = document.getElementById("userInput").value.trim();
+      if (!message) return;
+      document.getElementById("userInput").value = "";
+      document.getElementById("chatResponse").innerText = "🤖 Typing...";
+      fetch("/chat", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message })
+      })
+      .then(res => res.json())
+      .then(data => {
+        document.getElementById("chatResponse").innerText = data.response;
+      })
+      .catch(() => {
+        document.getElementById("chatResponse").innerText = "⚠️ Failed to get response.";
+      });
+    }
+
+    setInterval(fetchEmotion, 2000);
+
+    // Particle Background
+    const canvas = document.getElementById("particles");
+    const ctx = canvas.getContext("2d");
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    const particles = [];
+    for (let i = 0; i < 120; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 1,
+        dx: Math.random() - 0.5,
+        dy: Math.random() - 0.5
+      });
+    }
+
+    function animateParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (let p of particles) {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fillStyle = "#00fff0";
+        ctx.fill();
+        p.x += p.dx;
+        p.y += p.dy;
+        if (p.x < 0 || p.x > canvas.width) p.dx *= -1;
+        if (p.y < 0 || p.y > canvas.height) p.dy *= -1;
+      }
+      requestAnimationFrame(animateParticles);
+    }
+
+    animateParticles();
+  </script>
+</body>
+</html>

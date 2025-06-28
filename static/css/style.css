@@ -1,0 +1,26 @@
+/* Body styling */
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  padding-top: 50px;
+  background-color: #f0f0f0; /* Optional: light background */
+  margin: 0;
+}
+
+/* Button base styles */
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  background-color: #28a745;  /* Green background */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);  /* Optional shadow */
+}
+
+/* Hover effect */
+button:hover {
+  background-color: #218838; /* Slightly darker on hover */
+}
